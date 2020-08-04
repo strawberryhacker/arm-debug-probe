@@ -37,6 +37,8 @@ SRC +=
 
 obj-y += /src/main.c
 obj-y += /src/startup.c
+obj-y += /src/swd.c
+obj-y += /src/dap.c
 
 driver-y += /src/drivers/systick.c
 driver-y += /src/drivers/clock.c
