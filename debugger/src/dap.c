@@ -2,6 +2,8 @@
 #include "swd.h"
 #include "panic.h"
 #include "print.h"
+#include "dp.h"
+#include "ap.h"
 
 const char* const component_class[] = {
     [0x0]         = "Generic verification component",
@@ -29,10 +31,10 @@ const struct debug_component_info component_table[] = {
 u8 dp_get_id(struct dpid* id)
 {
     u32 dpid;
-    
-    u8 status = swd_in(DP, 0b00, &dpid, 10);
+    /* Read the ID register */
+    u8 status = dp_read(0x0, &dpid);
 
-    if (status != 0b001) {
+    if (status != 1) {
         panic("DPID fetch failure");
     }
 
@@ -47,82 +49,25 @@ u8 dp_get_id(struct dpid* id)
 }
 
 /*
- * This functions will change the SELECT field and return the AP register at the
- * specified address
- */
-u8 ap_read(u8 ap, u8 addr, u32* data)
-{
-    u32 select_reg = (ap << 24) | (addr & 0xF0);
-
-    /* Update the SELECT field */
-    u8 status = swd_out(DP, 0b10, select_reg, 10);
-
-    if (status != 0b001) {
-        panic("Cant write SELECT");
-        return status;
-    }
-
-    /* Issue an AP read to the right register inside the currently selected bank */
-    status = swd_in(AP, ((addr >> 2) & 0b11), data, 10);
-
-    if (status != 0b001) {
-        panic("Cant read from AP");
-        return status;
-    }
-
-    /* Read the RDBUFF to avoid any more accesses */
-    status = swd_in(DP, 0b11, data, 10);
-
-    if (status != 0b001) {
-        panic("Cant read RD buffer");
-        return status;
-    }
-    return 1;
-}
-
-/*
- * Write a word into a AP register
- */
-u8 ap_write(u8 ap, u8 addr, u32 data)
-{
-    u32 select_reg = (ap << 24) | (addr & 0xF0);
-
-    /* Update the SELECT field */
-    u8 status = swd_out(DP, 0b10, select_reg, 10);
-
-    if (status != 0b001) {
-        panic("Cant write SELECT");
-        return status;
-    }
-
-    /* Issue an AP read to the right register inside the currently selected bank */
-    status = swd_out(AP, ((addr >> 2) & 0b11), data, 10);
-
-    if (status != 0b001) {
-        panic("Cant read from AP");
-        return status;
-    }
-    return 1;
-}
-
-/*
  * Turns on the DEBUG and SYSTEM power and returns when the power is on
  */
 u8 dap_power_on(void)
 {
     u32 ctrl_stat;
-    u8 status = swd_in(DP, 0b01, &ctrl_stat, 10);
+    u8 status = dp_read(0x4, &ctrl_stat);
 
-    if (status != 0b001) {
+    if (status != 1) {
+        print("CTRL: %32b\n", ctrl_stat);
         panic("Cant read CTRL/STAT");
         return 0;
     }
 
     ctrl_stat |= (1 << DAP_DEBUG_PWR_REQ) | (1 << DAP_SYS_PWR_REQ);
-    status = swd_out(DP, 0b01, ctrl_stat, 10);
+    status = dp_write(0x4, ctrl_stat);
 
-    if (status != 0b001) {
-        panic("Cant read CTRL/STAT");
+    if (status != 1) {
+        print("CTRL: %32b\n", ctrl_stat);
+        panic("Cant write CTRL/STAT");
         return 0;
     }
 
@@ -130,7 +75,7 @@ u8 dap_power_on(void)
     u8 timeout = 0xFF;
     u32 pwr_ack_mask = (1 << DAP_SYS_PWR_ACK) | (1 << DAP_DEBUG_PWR_ACK);
     do {
-        status = swd_in(DP, 0b01, &ctrl_stat, 10);
+        status = dp_read(0x4, &ctrl_stat);
 
         if (status != 0b001) {
             panic("Cant read CTRL/STAT");
@@ -331,19 +276,19 @@ void dap_component_scan(u8 ap, u32 base_addr)
         return;
     }
     u32 sub_addr;
-    while (1) {
-        u32 status = mem_ap_read(ap, base_addr, &sub_addr);
+    u32 addr = base_addr;
+    do {
+        u32 status = mem_ap_read(ap, addr, &sub_addr);
 
         if (!status) {
-            return;
+            return 0;
         }
 
-        if (sub_addr == 0) {
-            print("- End -\n");
-            return;
+        if (sub_addr) {
+            dap_component_scan(ap, base_addr + (sub_addr & 0xFFFFF000));
         }
-        dap_component_scan(ap, sub_addr);
+        addr += 4;
+    } while (sub_addr);
 
-        base_addr += 4;
-    }
+    print("End\n");
 }

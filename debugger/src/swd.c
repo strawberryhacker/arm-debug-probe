@@ -115,7 +115,7 @@ void swd_init(void)
     }
 }
 
-u8 swd_out(enum debug_port dp, u8 addr, u32 data, u32 retry)
+u8 swd_out(enum debug_port dp, u8 addr, u32 data)
 {
     /* Set the start bit and park bit high */
     u8 start_byte = 0b10000001;
@@ -139,39 +139,32 @@ u8 swd_out(enum debug_port dp, u8 addr, u32 data, u32 retry)
         start_byte |= (1 << 5);
     }
 
-    u8 ack;
-    while (retry--) {
-        /* Send the start byte */
-        for (u8 i = 0; i < 8; i++) {
-            if (start_byte & (1 << i)) {
-                swd_write_bit(1);
-            } else {
-                swd_write_bit(0);
-            }
-        }
-
-        /* First turnaround phase */
-        swd_trn();
-
-        /* Reading the acknowledgement */
-        ack = 0;
-        for (u8 i = 0; i < 3; i++) {
-            if (swd_read_bit()) {
-                ack |= (1 << i);
-            }
-        }
-
-        /* Seconds turnaround phase */
-        swd_trn();
-
-        /* Check if response is ok */
-        if (ack != 0b010) {
-            break;
+    /* Send the start byte */
+    for (u8 i = 0; i < 8; i++) {
+        if (start_byte & (1 << i)) {
+            swd_write_bit(1);
+        } else {
+            swd_write_bit(0);
         }
     }
 
+    /* First turnaround phase */
+    swd_trn();
+
+    /* Reading the acknowledgement */
+    u8 ack = 0;
+    for (u8 i = 0; i < 3; i++) {
+        if (swd_read_bit()) {
+            ack |= (1 << i);
+        }
+    }
+
+    /* Seconds turnaround phase */
+    swd_trn();
+
     /* Check if a FAULT has occured */
     if (ack != 0b001) {
+        /* Send the dummy cylces */
         for (u8 i = 0; i < 8; i++) {
             swd_write_bit(0);
         }
@@ -204,7 +197,7 @@ u8 swd_out(enum debug_port dp, u8 addr, u32 data, u32 retry)
     return ack;
 }
 
-u8 swd_in(enum debug_port dp, u8 addr, u32* data, u32 retry)
+u8 swd_in(enum debug_port dp, u8 addr, u32* data)
 {
     /* Set the start bit and park bit high */
     u8 start_byte = 0b10000101;
@@ -228,38 +221,29 @@ u8 swd_in(enum debug_port dp, u8 addr, u32* data, u32 retry)
         start_byte |= (1 << 5);
     }
 
-    u8 ack;
-    while (retry--) {
-        /* Send the data phase */
-        for (u8 i = 0; i < 8; i++) {
-            if (start_byte & (1 << i)) {
-                swd_write_bit(1);
-            } else {
-                swd_write_bit(0);
-            }
+    /* Send the data phase */
+    for (u8 i = 0; i < 8; i++) {
+        if (start_byte & (1 << i)) {
+            swd_write_bit(1);
+        } else {
+            swd_write_bit(0);
         }
-
-        /* First turnaround phase */
-        swd_trn();
-
-        /* Reading the acknowledgement */
-        ack = 0;
-        for (u8 i = 0; i < 3; i++) {
-            if (swd_read_bit()) {
-                ack |= (1 << i);
-            }
-        }
-
-        /* Check for OK response */
-        if (ack != 0b010) {
-            break;
-        }
-        print("Error\n");
-        swd_trn();
     }
 
-    /* Check if a FAULT has occured */
+    /* First turnaround phase */
+    swd_trn();
+
+    /* Reading the acknowledgement */
+    u8 ack = 0;
+    for (u8 i = 0; i < 3; i++) {
+        if (swd_read_bit()) {
+            ack |= (1 << i);
+        }
+    }
+
+    /* Check if a FAULT or WAIT has occured */
     if (ack != 0b001) {
+        swd_trn();
         for (u8 i = 0; i < 8; i++) {
             swd_write_bit(0);
         }
