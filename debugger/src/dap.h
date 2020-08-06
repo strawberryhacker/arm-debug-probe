@@ -1,3 +1,5 @@
+/* Copyright (C) StrawberryHacker */
+
 #ifndef DAP_H
 #define DAP_H
 
@@ -66,6 +68,6 @@ u8 mem_ap_read(u8 ap, u32 addr, u32* data);
 
 u8 mem_ap_write(u8 ap, u32 addr, u32 data);
 
-void dap_component_scan(u8 ap, u32 base_addr);
+u8 dap_component_scan(u8 ap, u32 base_addr);
 
 #endif

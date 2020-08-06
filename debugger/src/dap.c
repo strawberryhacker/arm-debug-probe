@@ -1,3 +1,5 @@
+/* Copyright (C) StrawberryHacker */
+
 #include "dap.h"
 #include "swd.h"
 #include "panic.h"
@@ -142,8 +144,11 @@ u8 mem_ap_get_info(u8 ap, struct mem_ap_info* info)
     if (!ap_read(ap, 0xF8, &data)) {
         return 0;
     }
-
     info->base_addr = (u64)data;
+
+    if (!ap_read(ap, 0xF0, &data)) {
+        return 0;
+    }
 
     /* If LPA is supported the upper word of the BASE address can be fetched from 0xF0 */
     if (info->lpa_support) {
@@ -215,7 +220,6 @@ char* dap_get_component_name(u16 part_number, u16 arch_id, u8 dev_type)
 u8 mem_ap_get_component_info(u8 ap, u32 addr)
 {
     u32 cid[4];
-
     u32 cid_addr = addr + 0xFF0; /* CIDR0 */
 
     /* Read the CID registers */
@@ -223,8 +227,14 @@ u8 mem_ap_get_component_info(u8 ap, u32 addr)
         if (!mem_ap_read(ap, cid_addr, &cid[i])) {
             panic("Error");
         }
+        print("Data: %4h\n", cid[i]);
         cid_addr += 4;
     }
+    print("OK");
+    u32 data;
+    dp_read(0x4, &data);
+    print("Data: %32b\n", data);
+
 
     /* Check if this is a valid component */
     if (cid[0] != 0b1101) {
@@ -239,6 +249,7 @@ u8 mem_ap_get_component_info(u8 ap, u32 addr)
     if (cid[1] & 0xF) {
         return 0;
     }
+    print("pokpokpok");
     u8 class = (cid[1] >> 4) & 0xF;
     print("Class: %s at addr 0x%4h", component_class[class], addr);
 
@@ -265,21 +276,22 @@ u8 mem_ap_get_component_info(u8 ap, u32 addr)
         print(" - CoreSight detected: %s\n", comp_info);
     }
     print("\n");
-
+    print("OKOKOK");
     return 1;
 }
 
-void dap_component_scan(u8 ap, u32 base_addr)
+u8 dap_component_scan(u8 ap, u32 base_addr)
 {
     /* Check if this is a valid component */
     if (!mem_ap_get_component_info(ap, base_addr)) {
-        return;
+        return 1;
     }
     u32 sub_addr;
     u32 addr = base_addr;
     do {
+        print("reading MEM-AP\n");
         u32 status = mem_ap_read(ap, addr, &sub_addr);
-
+        print("done MEM-AP\n");
         if (!status) {
             return 0;
         }
@@ -291,4 +303,5 @@ void dap_component_scan(u8 ap, u32 base_addr)
     } while (sub_addr);
 
     print("End\n");
+    return 1;
 }

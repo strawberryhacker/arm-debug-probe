@@ -1,3 +1,5 @@
+/* Copyright (C) StrawberryHacker */
+
 #ifndef AP_H
 #define AP_H
 

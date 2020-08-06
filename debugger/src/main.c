@@ -58,8 +58,8 @@ int main(void)
 	print("LPA support: %d\n\n", info.lpa_support);
 
 	/* Scanning the ROM table map */
-	dap_component_scan(0, 0x80000000);
-
+	dap_component_scan(0, 0x00000000);
+	print("DAP scan complete\n");
 	u32 a5_debug_unit_addr = 0x80010000;
 	u32 debug_base;
 	mem_ap_read(0, a5_debug_unit_addr, &debug_base);

@@ -1,3 +1,5 @@
+/* Copyright (C) StrawberryHacker */
+
 #include "ap.h"
 #include "dp.h"
 #include "swd.h"
