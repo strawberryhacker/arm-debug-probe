@@ -219,6 +219,7 @@ char* dap_get_component_name(u16 part_number, u16 arch_id, u8 dev_type)
  */
 u8 mem_ap_get_component_info(u8 ap, u32 addr)
 {
+    print("Scanning component at address: 0x%4h\n", addr);
     u32 cid[4];
     u32 cid_addr = addr + 0xFF0; /* CIDR0 */
 
@@ -230,11 +231,6 @@ u8 mem_ap_get_component_info(u8 ap, u32 addr)
         print("Data: %4h\n", cid[i]);
         cid_addr += 4;
     }
-    print("OK");
-    u32 data;
-    dp_read(0x4, &data);
-    print("Data: %32b\n", data);
-
 
     /* Check if this is a valid component */
     if (cid[0] != 0b1101) {
@@ -249,6 +245,7 @@ u8 mem_ap_get_component_info(u8 ap, u32 addr)
     if (cid[1] & 0xF) {
         return 0;
     }
+
     print("pokpokpok");
     u8 class = (cid[1] >> 4) & 0xF;
     print("Class: %s at addr 0x%4h", component_class[class], addr);

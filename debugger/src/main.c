@@ -49,6 +49,16 @@ int main(void)
 	}
 	print("\n");
 
+	/* Try to read the ID register */
+	u32 id_reg;
+	ap_read(0, 0xFC, &id_reg);
+
+	ap_write(0, 0x00, 0xFFFFFFFF);
+	ap_read(0, 0x00, &id_reg);
+	print("STATUS REGISTER: %32b\n", id_reg);
+
+	print("ID register: %4h\n", id_reg);
+
 	/* Read the BASE address of the AP #0 */
 	struct mem_ap_info info;
 	if (!mem_ap_get_info(0, &info)) {
@@ -58,8 +68,9 @@ int main(void)
 	print("LPA support: %d\n\n", info.lpa_support);
 
 	/* Scanning the ROM table map */
-	dap_component_scan(0, 0x00000000);
+	dap_component_scan(0, 0xE00FF000);
 	print("DAP scan complete\n");
+	
 	u32 a5_debug_unit_addr = 0x80010000;
 	u32 debug_base;
 	mem_ap_read(0, a5_debug_unit_addr, &debug_base);
